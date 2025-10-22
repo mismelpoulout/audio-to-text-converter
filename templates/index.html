@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Transcriptor de Audio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #e3f2fd, #ffffff);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+        .transcription-card {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .file-field input[type="file"] {
+            height: auto;
+        }
+        .download-btn {
+            margin-top: 1rem;
+        }
+        .delete-btn {
+            margin-left: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h4 class="center-align">Transcriptor de Audio</h4>
+
+    {% if transcriptions %}
+        <div class="section">
+            <h5>Transcripciones:</h5>
+            {% for name, text in transcriptions %}
+                <div class="card transcription-card blue-grey lighten-5" id="card-{{ loop.index }}">
+                    <div class="card-content">
+                        <span class="card-title">{{ name }}</span>
+                        <p id="text-{{ loop.index }}">{{ text }}</p>
+                    </div>
+                    <div class="card-action">
+                        <a class="btn-small red lighten-1 delete-btn" onclick="deleteCard('card-{{ loop.index }}')">
+                            Eliminar
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+            <div class="center-align">
+                <a class="btn blue darken-2 download-btn" onclick="downloadAllPDF()">
+                    Descargar Todo en PDF
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if error %}
+        <div class="card-panel red lighten-4 red-text text-darken-4">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="file-field input-field">
+            <div class="btn blue">
+                <span>Seleccionar audios</span>
+                <input type="file" name="audiofile" accept="audio/*" multiple>
+            </div>
+            <div class="file-path-wrapper">
+                <input class="file-path validate" type="text" placeholder="Sube uno o varios archivos de audio">
+            </div>
+        </div>
+        <div class="center-align">
+            <button type="submit" class="btn waves-effect waves-light blue darken-2">
+                Transcribir
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+    function deleteCard(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.classList.add("hidden");
+        }
+    }
+
+    async function downloadAllPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let y = 20;
+        doc.setFontSize(12);
+
+        const cards = document.querySelectorAll(".transcription-card:not(.hidden)");
+
+        if (cards.length === 0) {
+            alert("No hay transcripciones para descargar.");
+            return;
+        }
+
+        for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+            const title = card.querySelector(".card-title").innerText;
+            const text = card.querySelector("p").innerText;
+
+            const lines = doc.splitTextToSize(text, 180);
+
+            if (y + 20 > doc.internal.pageSize.height) {
+                doc.addPage();
+                y = 20;
+            }
+
+            doc.text(`Archivo: ${title}`, 10, y);
+            y += 10;
+
+            for (let line of lines) {
+                if (y > doc.internal.pageSize.height - 10) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.text(line, 10, y);
+                y += 7;
+            }
+
+            y += 10; // Espacio entre transcripciones
+        }
+
+        doc.save("transcripciones.pdf");
+    }
+</script>
+</body>
+</html>
